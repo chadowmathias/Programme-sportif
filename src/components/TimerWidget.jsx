@@ -1,0 +1,182 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Pause, Square, Plus, Bell, X, RotateCcw } from 'lucide-react';
+
+export default function TimerWidget({ timeRemaining, setTimeRemaining, isTimerActive, setIsTimerActive, targetTime }) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const timerRef = useRef(null);
+  const audioCtxRef = useRef(null);
+
+  // Play a premium synthesize double-beep when timer completes
+  const playCompletionSound = () => {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      
+      const audioCtx = new AudioContextClass();
+      
+      const playBeep = (delay, frequency, duration) => {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime + delay);
+        
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime + delay);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + duration - 0.02);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + duration);
+      };
+
+      // Play double beep (high pitch)
+      playBeep(0, 880, 0.15);
+      playBeep(0.2, 880, 0.15);
+      playBeep(0.4, 1200, 0.3);
+    } catch (e) {
+      console.warn("AudioContext failed to play:", e);
+    }
+  };
+
+  // Timer Tick logic
+  useEffect(() => {
+    if (isTimerActive && isPlaying && timeRemaining > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            setIsTimerActive(false);
+            playCompletionSound();
+            setIsFullscreen(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isTimerActive, isPlaying, timeRemaining]);
+
+  // If timer is disabled externally, clean interval
+  useEffect(() => {
+    if (!isTimerActive) {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+  }, [isTimerActive]);
+
+  if (!isTimerActive) return null;
+
+  // Format seconds to mm:ss
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleTogglePlay = (e) => {
+    e.stopPropagation();
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleAdd30Sec = (e) => {
+    e.stopPropagation();
+    setTimeRemaining((prev) => prev + 30);
+  };
+
+  const handleStop = (e) => {
+    e.stopPropagation();
+    setIsTimerActive(false);
+    setIsFullscreen(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const percentProgress = targetTime > 0 ? ((targetTime - timeRemaining) / targetTime) * 100 : 0;
+  const strokeDashoffset = 565.48 - (565.48 * percentProgress) / 100;
+
+  return (
+    <>
+      {/* Floating Mini Widget */}
+      {!isFullscreen && (
+        <div className="timer-widget" onClick={() => setIsFullscreen(true)}>
+          <Bell size={14} className="fade-in" style={{ animation: 'bounce 1s infinite alternate' }} />
+          <span>Repos : {formatTime(timeRemaining)}</span>
+          <button onClick={handleTogglePlay} className="btn-icon" style={{ width: 24, height: 24, padding: 0, color: 'inherit' }}>
+            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+          </button>
+        </div>
+      )}
+
+      {/* Fullscreen Rest Timer Overlay */}
+      {isFullscreen && (
+        <div className="timer-fullscreen">
+          <button className="btn-icon" onClick={() => setIsFullscreen(false)} style={{ position: 'absolute', top: 'calc(20px + env(safe-area-inset-top))', right: 20, zIndex: 1010 }}>
+            <X size={24} />
+          </button>
+
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <h3 style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 4 }}>
+              Temps de Récupération
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+              Détendez vos muscles et respirez profondément.
+            </p>
+          </div>
+
+          {/* Circular Countdown Progress */}
+          <div className="timer-circle timer-circle-glow">
+            {/* SVG circle track and fill */}
+            <svg width="220" height="220" style={{ position: 'absolute', transform: 'rotate(-90deg)', top: -14, left: -14 }}>
+              <circle
+                cx="110"
+                cy="110"
+                r="90"
+                stroke="rgba(255, 85, 0, 0.05)"
+                strokeWidth="6"
+                fill="transparent"
+              />
+              <circle
+                cx="110"
+                cy="110"
+                r="90"
+                stroke="var(--accent-orange)"
+                strokeWidth="6"
+                fill="transparent"
+                strokeDasharray="565.48"
+                strokeDashoffset={strokeDashoffset}
+                style={{ transition: 'stroke-dashoffset 1s linear' }}
+              />
+            </svg>
+
+            <span className="timer-time">{formatTime(timeRemaining)}</span>
+            <span className="timer-label">{isPlaying ? 'Repos en cours' : 'Rest en pause'}</span>
+          </div>
+
+          {/* Controls */}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            {/* Stop / Skip */}
+            <button className="btn btn-secondary" onClick={handleStop} style={{ borderRadius: '50%', width: 56, height: 56, padding: 0 }}>
+              <Square size={20} fill="var(--text-main)" />
+            </button>
+
+            {/* Play / Pause */}
+            <button className="btn btn-primary" onClick={handleTogglePlay} style={{ borderRadius: '50%', width: 72, height: 72, padding: 0, backgroundColor: 'var(--accent-orange)', boxShadow: '0 0 20px rgba(255, 85, 0, 0.4)' }}>
+              {isPlaying ? <Pause size={28} fill="var(--text-dark)" /> : <Play size={28} fill="var(--text-dark)" />}
+            </button>
+
+            {/* Add 30s */}
+            <button className="btn btn-secondary" onClick={handleAdd30Sec} style={{ borderRadius: '50%', width: 56, height: 56, padding: 0 }}>
+              <Plus size={20} />
+              <span style={{ fontSize: 10, position: 'absolute', bottom: 6 }}>+30s</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
