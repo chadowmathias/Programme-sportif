@@ -449,6 +449,12 @@ export default function App() {
                             </button>
                           </div>
 
+                          {ex.note && (
+                            <div className="exercise-instruction-note">
+                              <strong>Note :</strong> {ex.note}
+                            </div>
+                          )}
+
                           {/* Sets Input Grid - Reps only */}
                           <table className="logbook-table">
                             <thead>

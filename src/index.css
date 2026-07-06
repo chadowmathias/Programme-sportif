@@ -742,3 +742,23 @@ body::after {
   from { opacity: 0.8; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1.05); }
 }
+
+/* Exercise instruction note */
+.exercise-instruction-note {
+  font-size: 12px;
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--accent-lime);
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-top: 14px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.exercise-instruction-note strong {
+  color: var(--accent-lime);
+  font-weight: 700;
+}
+
