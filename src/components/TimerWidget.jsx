@@ -89,6 +89,11 @@ export default function TimerWidget({ timeRemaining, setTimeRemaining, isTimerAc
     setTimeRemaining((prev) => prev + 30);
   };
 
+  const handleRemove30Sec = (e) => {
+    e.stopPropagation();
+    setTimeRemaining((prev) => Math.max(0, prev - 30));
+  };
+
   const handleStop = (e) => {
     e.stopPropagation();
     setIsTimerActive(false);
@@ -104,11 +109,41 @@ export default function TimerWidget({ timeRemaining, setTimeRemaining, isTimerAc
       {/* Floating Mini Widget */}
       {!isFullscreen && (
         <div className="timer-widget" onClick={() => setIsFullscreen(true)}>
-          <Bell size={14} className="fade-in" style={{ animation: 'bounce 1s infinite alternate' }} />
-          <span>Repos : {formatTime(timeRemaining)}</span>
-          <button onClick={handleTogglePlay} className="btn-icon" style={{ width: 24, height: 24, padding: 0, color: 'inherit' }}>
-            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Bell size={13} className="fade-in" style={{ animation: 'bounce 1s infinite alternate', flexShrink: 0 }} />
+            <span>{formatTime(timeRemaining)}</span>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: '4px' }}>
+            {/* Quick -30s */}
+            <button 
+              onClick={handleRemove30Sec} 
+              className="btn-icon" 
+              style={{ width: 22, height: 22, padding: 0, fontSize: 10, fontWeight: 900, background: 'rgba(255,255,255,0.06)', borderRadius: '4px', border: '1px solid rgba(255,85,0,0.15)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="-30s"
+            >
+              -30
+            </button>
+            
+            {/* Play/Pause */}
+            <button 
+              onClick={handleTogglePlay} 
+              className="btn-icon" 
+              style={{ width: 22, height: 22, padding: 0, background: 'rgba(255,255,255,0.06)', borderRadius: '4px', border: '1px solid rgba(255,85,0,0.15)', color: 'var(--accent-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {isPlaying ? <Pause size={10} /> : <Play size={10} />}
+            </button>
+
+            {/* Quick +30s */}
+            <button 
+              onClick={handleAdd30Sec} 
+              className="btn-icon" 
+              style={{ width: 22, height: 22, padding: 0, fontSize: 10, fontWeight: 900, background: 'rgba(255,255,255,0.06)', borderRadius: '4px', border: '1px solid rgba(255,85,0,0.15)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="+30s"
+            >
+              +30
+            </button>
+          </div>
         </div>
       )}
 
@@ -158,21 +193,27 @@ export default function TimerWidget({ timeRemaining, setTimeRemaining, isTimerAc
           </div>
 
           {/* Controls */}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', justifyContent: 'center', width: '100%', padding: '0 20px' }}>
             {/* Stop / Skip */}
-            <button className="btn btn-secondary" onClick={handleStop} style={{ borderRadius: '50%', width: 56, height: 56, padding: 0 }}>
+            <button className="btn btn-secondary" onClick={handleStop} style={{ borderRadius: '50%', width: 56, height: 56, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Square size={20} fill="var(--text-main)" />
             </button>
 
+            {/* Remove 30s */}
+            <button className="btn btn-secondary" onClick={handleRemove30Sec} style={{ borderRadius: '50%', width: 56, height: 56, padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 800 }}>-30</span>
+              <span style={{ fontSize: 8, textTransform: 'uppercase', fontWeight: 600, opacity: 0.8, marginTop: -2 }}>sec</span>
+            </button>
+
             {/* Play / Pause */}
-            <button className="btn btn-primary" onClick={handleTogglePlay} style={{ borderRadius: '50%', width: 72, height: 72, padding: 0, backgroundColor: 'var(--accent-orange)', boxShadow: '0 0 20px rgba(255, 85, 0, 0.4)' }}>
+            <button className="btn btn-primary" onClick={handleTogglePlay} style={{ borderRadius: '50%', width: 72, height: 72, padding: 0, backgroundColor: 'var(--accent-orange)', boxShadow: '0 0 20px rgba(255, 85, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {isPlaying ? <Pause size={28} fill="var(--text-dark)" /> : <Play size={28} fill="var(--text-dark)" />}
             </button>
 
             {/* Add 30s */}
-            <button className="btn btn-secondary" onClick={handleAdd30Sec} style={{ borderRadius: '50%', width: 56, height: 56, padding: 0 }}>
-              <Plus size={20} />
-              <span style={{ fontSize: 10, position: 'absolute', bottom: 6 }}>+30s</span>
+            <button className="btn btn-secondary" onClick={handleAdd30Sec} style={{ borderRadius: '50%', width: 56, height: 56, padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 800 }}>+30</span>
+              <span style={{ fontSize: 8, textTransform: 'uppercase', fontWeight: 600, opacity: 0.8, marginTop: -2 }}>sec</span>
             </button>
           </div>
         </div>
