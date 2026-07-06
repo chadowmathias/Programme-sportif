@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ppl-arnold-v2';
+const CACHE_NAME = 'ppl-arnold-v3';
 const ASSETS = [
   '/',
   '/index.html',
@@ -35,6 +35,26 @@ self.addEventListener('activate', (e) => {
 
 // Intercept requests for offline access
 self.addEventListener('fetch', (e) => {
+  const url = new URL(e.request.url);
+
+  // Network-First for index.html / root to always get the latest page when online
+  if (url.pathname === '/' || url.pathname === '/index.html') {
+    e.respondWith(
+      fetch(e.request)
+        .then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          return caches.match(e.request);
+        })
+    );
+    return;
+  }
+
+  // Cache-first for other static assets
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -55,3 +75,4 @@ self.addEventListener('fetch', (e) => {
     })
   );
 });
+
