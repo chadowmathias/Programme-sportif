@@ -110,9 +110,24 @@ export default function App() {
         setVh();
       }
     };
+
+    // iOS Safari keyboard scroll bug reset: forces viewport to snap back on input blur
+    const handleBlur = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          document.body.scrollTop = 0;
+          document.documentElement.scrollTop = 0;
+        }, 80);
+      }
+    };
     
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    document.addEventListener('focusout', handleBlur);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('focusout', handleBlur);
+    };
   }, []);
 
   // Load history on mount
