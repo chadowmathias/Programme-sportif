@@ -35,6 +35,46 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState(null); // null = Home, 1-7 = Workout detail
   const [exerciseLogs, setExerciseLogs] = useState({}); // Logs for active workout (reps and comments only)
   const [history, setHistory] = useState([]);
+
+  // Premium Custom States (Liquid Glass & Transitions & Haptics)
+  const [isLiquidGlass, setIsLiquidGlass] = useState(() => {
+    return localStorage.getItem('theme-liquid-glass') === 'true';
+  });
+  const [transitionState, setTransitionState] = useState('idle'); // 'idle', 'exiting', 'entering'
+
+  // Haptic feedback utility
+  const triggerHaptic = (pattern = 10) => {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch (e) {
+        console.warn("Haptic feedback error:", e);
+      }
+    }
+  };
+
+  // Smooth navigation utility
+  const changeView = (newTab, newDay) => {
+    triggerHaptic(15);
+    setTransitionState('exiting');
+    setTimeout(() => {
+      setTab(newTab);
+      setSelectedDay(newDay);
+      setTransitionState('entering');
+      setTimeout(() => {
+        setTransitionState('idle');
+      }, 220);
+    }, 180);
+  };
+
+  const toggleLiquidGlass = () => {
+    triggerHaptic(30);
+    setIsLiquidGlass(prev => {
+      const next = !prev;
+      localStorage.setItem('theme-liquid-glass', String(next));
+      return next;
+    });
+  };
   
   // Timer States
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -52,6 +92,28 @@ export default function App() {
 
   // Get current day of week (1: Mon, ..., 7: Sun)
   const currentDayOfWeek = new Date().getDay() === 0 ? 7 : new Date().getDay();
+
+  // Fix virtual keyboard layout shift & dynamic height issues on mobile devices
+  useEffect(() => {
+    const setVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    setVh();
+    
+    let lastWidth = window.innerWidth;
+    const handleResize = () => {
+      // Only recalculate --vh if width changes (e.g. rotation), NOT when height changes (keyboard opens)
+      if (window.innerWidth !== lastWidth) {
+        lastWidth = window.innerWidth;
+        setVh();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Load history on mount
   useEffect(() => {
@@ -129,6 +191,7 @@ export default function App() {
 
   // Toggle set completed checkbox
   const handleToggleSetCompleted = (exId, setIndex, targetRestStr, targetRestSec) => {
+    triggerHaptic(15);
     setExerciseLogs(prev => {
       const updatedLogs = { ...prev };
       const updatedSets = [...updatedLogs[exId].sets];
@@ -208,7 +271,7 @@ export default function App() {
       setConfetti(particles);
       
       setShowCelebration(true);
-      setSelectedDay(null);
+      changeView('workout', null);
       
       // Auto-hide celebration toast and clear particles after 5s
       setTimeout(() => {
@@ -250,7 +313,7 @@ export default function App() {
   };
 
   return (
-    <div className="mobile-wrapper">
+    <div className={`mobile-wrapper ${isLiquidGlass ? 'liquid-glass-active' : ''}`}>
       {/* Confetti particles overlay */}
       {confetti.map((c) => (
         <div
@@ -279,7 +342,7 @@ export default function App() {
       />
 
       {/* Main content container */}
-      <div className="screen-container">
+      <div className={`screen-container ${transitionState === 'exiting' ? 'slide-exit' : transitionState === 'entering' ? 'slide-enter' : 'fade-in'}`}>
         
         {/* CELEBRATION TOAST */}
         {showCelebration && (
@@ -318,7 +381,24 @@ export default function App() {
                     <h1 className="header-title">PPL x Arnold</h1>
                     <p className="header-subtitle">Visualiseur &amp; Surcharge Progressive</p>
                   </div>
-                  <Zap size={24} style={{ color: 'var(--accent-lime)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button 
+                      onClick={toggleLiquidGlass} 
+                      className="btn-icon"
+                      style={{ 
+                        color: isLiquidGlass ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                        width: 38,
+                        height: 38,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Activer Liquid Glass"
+                    >
+                      <Sparkles size={20} style={{ animation: isLiquidGlass ? 'pulse 2s infinite' : 'none' }} />
+                    </button>
+                    <Zap size={24} style={{ color: 'var(--accent-lime)' }} />
+                  </div>
                 </div>
 
                 {/* Quick stats */}
@@ -346,7 +426,7 @@ export default function App() {
                     return (
                       <div 
                         key={day.id}
-                        onClick={() => setSelectedDay(day.id)}
+                        onClick={() => changeView('workout', day.id)}
                         className={`day-card card-hover ${isToday ? 'day-card-active' : ''}`}
                       >
                         <div>
@@ -370,31 +450,45 @@ export default function App() {
               <div className="fade-in">
                 {/* Header detail */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <button className="btn-icon" onClick={() => setSelectedDay(null)} aria-label="Retour">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <button className="btn-icon" onClick={() => changeView('workout', null)} aria-label="Retour">
                       <ChevronLeft size={24} />
                     </button>
-                    <div>
-                      <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <h2 style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         Jour {selectedDay} : {WORKOUT_PROGRAM[selectedDay].name}
                       </h2>
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {WORKOUT_PROGRAM[selectedDay].description}
                       </p>
                     </div>
                   </div>
                   
-                  {/* Dedicated Legend Button on active session */}
-                  {!WORKOUT_PROGRAM[selectedDay].restDay && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <button 
-                      className="btn btn-secondary" 
-                      onClick={() => setIsLegendModalOpen(true)}
-                      style={{ padding: '6px 12px', fontSize: 12, gap: 4, borderRadius: 'var(--radius-sm)' }}
+                      onClick={toggleLiquidGlass} 
+                      className="btn-icon"
+                      style={{ 
+                        color: isLiquidGlass ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                        width: 32,
+                        height: 32
+                      }}
+                      title="Activer Liquid Glass"
                     >
-                      <Info size={14} style={{ color: 'var(--accent-lime)' }} />
-                      <span>Légende</span>
+                      <Sparkles size={18} />
                     </button>
-                  )}
+
+                    {!WORKOUT_PROGRAM[selectedDay].restDay && (
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={() => { triggerHaptic(15); setIsLegendModalOpen(true); }}
+                        style={{ padding: '6px 10px', fontSize: 11, gap: 4, borderRadius: 'var(--radius-sm)' }}
+                      >
+                        <Info size={12} style={{ color: 'var(--accent-lime)' }} />
+                        <span>Légende</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* If Rest Day */}
@@ -442,7 +536,7 @@ export default function App() {
                             <button 
                               className="btn-secondary btn"
                               style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', fontSize: 12, gap: 4 }}
-                              onClick={() => setActiveHistoryExercise(ex.name)}
+                              onClick={() => { triggerHaptic(15); setActiveHistoryExercise(ex.name); }}
                             >
                               <History size={13} />
                               <span>Logs</span>
@@ -536,7 +630,7 @@ export default function App() {
                         onClick={() => {
                           if (window.confirm("Es-tu sûr de vouloir abandonner cette séance ? Les données en cours seront effacées.")) {
                             clearActiveSessionDraft(selectedDay);
-                            setSelectedDay(null);
+                            changeView('workout', null);
                           }
                         }}
                         style={{ flex: 1 }}
@@ -698,19 +792,19 @@ export default function App() {
       </div>
 
       {/* Navigation menu docked at the bottom */}
-      <BottomNav currentTab={tab} setTab={(t) => { setTab(t); setSelectedDay(null); }} />
+      <BottomNav currentTab={tab} setTab={(t) => changeView(t, null)} />
 
       {/* History modal for individual exercises */}
       <HistoryModal
         exerciseName={activeHistoryExercise}
         isOpen={activeHistoryExercise !== null}
-        onClose={() => setActiveHistoryExercise(null)}
+        onClose={() => { triggerHaptic(10); setActiveHistoryExercise(null); }}
       />
 
       {/* Quick Legend Modal accessible during session */}
       <LegendModal 
         isOpen={isLegendModalOpen}
-        onClose={() => setIsLegendModalOpen(false)}
+        onClose={() => { triggerHaptic(10); setIsLegendModalOpen(false); }}
       />
     </div>
   );

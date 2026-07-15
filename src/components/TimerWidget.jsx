@@ -7,7 +7,18 @@ export default function TimerWidget({ timeRemaining, setTimeRemaining, isTimerAc
   const timerRef = useRef(null);
   const audioCtxRef = useRef(null);
 
-  // Play a premium synthesize double-beep when timer completes
+  // Haptic feedback utility
+  const triggerHaptic = (pattern = 10) => {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch (e) {
+        console.warn("Haptic feedback error:", e);
+      }
+    }
+  };
+
+  // Play a premium crystal bell sound when timer completes
   const playCompletionSound = () => {
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -15,27 +26,28 @@ export default function TimerWidget({ timeRemaining, setTimeRemaining, isTimerAc
       
       const audioCtx = new AudioContextClass();
       
-      const playBeep = (delay, frequency, duration) => {
+      const playBellTone = (frequency, gainVal, duration) => {
         const osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime + delay);
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
         
-        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime + delay);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + duration - 0.02);
+        gainNode.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
         
         osc.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         
-        osc.start(audioCtx.currentTime + delay);
-        osc.stop(audioCtx.currentTime + delay + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
       };
 
-      // Play double beep (high pitch)
-      playBeep(0, 880, 0.15);
-      playBeep(0.2, 880, 0.15);
-      playBeep(0.4, 1200, 0.3);
+      // Synthesize beautiful metallic bell sound with harmonic overtones
+      playBellTone(880, 0.25, 1.5);   // Fundamental note (A5)
+      playBellTone(1320, 0.15, 1.2);  // Perfect fifth (E6)
+      playBellTone(1760, 0.10, 0.8);  // Octave (A6)
+      playBellTone(2200, 0.05, 0.5);  // Major third overtone (C#7)
     } catch (e) {
       console.warn("AudioContext failed to play:", e);
     }
@@ -50,6 +62,7 @@ export default function TimerWidget({ timeRemaining, setTimeRemaining, isTimerAc
             clearInterval(timerRef.current);
             setIsTimerActive(false);
             playCompletionSound();
+            triggerHaptic([200, 100, 200, 100, 300]); // 3-pulse premium vibration
             setIsFullscreen(false);
             return 0;
           }
@@ -81,21 +94,25 @@ export default function TimerWidget({ timeRemaining, setTimeRemaining, isTimerAc
 
   const handleTogglePlay = (e) => {
     e.stopPropagation();
+    triggerHaptic(15);
     setIsPlaying(!isPlaying);
   };
 
   const handleAdd30Sec = (e) => {
     e.stopPropagation();
+    triggerHaptic(15);
     setTimeRemaining((prev) => prev + 30);
   };
 
   const handleRemove30Sec = (e) => {
     e.stopPropagation();
+    triggerHaptic(15);
     setTimeRemaining((prev) => Math.max(0, prev - 30));
   };
 
   const handleStop = (e) => {
     e.stopPropagation();
+    triggerHaptic(25);
     setIsTimerActive(false);
     setIsFullscreen(false);
     if (timerRef.current) clearInterval(timerRef.current);
